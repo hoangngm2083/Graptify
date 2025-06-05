@@ -77,7 +77,7 @@ export async function fetchAllTracks(): Promise<TrackRecord[]> {
 // Ghi nhận lượt nghe mới cho một track (trackId)
 export const trackingListeningHistoryAPI = async (trackId: string | number) => {
   console.log(trackId)
-  const res = await axios.post(`/api/track/${trackId}/listen`);
+  const res = await axios.post(`/track/${trackId}/listen`);
   // Backend trả về { message, history }
   return res.data.history;
 };

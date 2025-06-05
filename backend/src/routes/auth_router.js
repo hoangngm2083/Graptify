@@ -27,7 +27,9 @@ authRouter.get('/me', authenticateUser, async (req, res) => {
     }
 
     res.status(200).json({
-      id: user._id,
+      id: user.id,
+      name: user.name,
+      email: user.email
     });
   } catch (err) {
     console.error('Lỗi khi lấy thông tin user:', err);

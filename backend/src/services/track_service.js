@@ -1,18 +1,13 @@
 import { Sequelize, Transaction } from 'sequelize';
 import db from '../models/index.js';
-import { extractMetadata, checkMetadataSimilarity} from '../services/metadata_service.js';
 
 const getAllTracks = async () => {
     return await db.Track.findAll({
         where: {
-            status: 'approved',
             privacy: 'public'
             
         },
         include: [
-            {
-                model: db.Metadata
-            },
             {
                 model: db.User,
                 attributes: ['id', 'Name']
@@ -23,9 +18,6 @@ const getAllTracks = async () => {
 
 const getAllTracksForAdmin = async () => {
     return await db.Track.findAll({
-        include: {
-            model: db.Metadata
-        },
         order: [['createdAt', 'DESC']]
     });
 };
@@ -42,37 +34,13 @@ const getTrackById = async (trackId) => {
         const track = await db.Track.findOne( {
             where: {
                 id: numericTrackId,
-                status: 'approved' 
             },
             // Bạn có thể chọn các attributes cụ thể từ bảng Track nếu muốn
-            attributes: ['id', 'trackUrl', 'imageUrl', 'uploaderId', 'createdAt', 'updatedAt', 'privacy'], 
+            attributes: ['id', 'trackname', 'duration_ms', 'release_date', 'trackUrl', 'imageUrl', 'uploaderId', 'createdAt', 'updatedAt', 'privacy','lyrics'], 
             include: [
                 {
                     model: db.User, // Nếu bạn muốn lấy thông tin người upload
                     attributes: ['id', 'Name']
-                },
-                {
-                    model: db.Metadata,
-                    attributes: [ // Liệt kê các trường bạn muốn lấy từ Metadatum
-                        'trackname',
-                        'duration_ms',
-                        'explicit',
-                        'danceability',
-                        'energy',
-                        'key',
-                        'loudness',
-                        'mode',
-                        'speechiness',
-                        'acousticness',
-                        'instrumentalness',
-                        'liveness',
-                        'valence',
-                        'tempo',
-                        'time_signature',
-                        'year',
-                        'release_date',
-                        'lyrics' // <<<--- ĐẢM BẢO LẤY TRƯỜNG 'lyrics'
-                    ]
                 }
                 // Bạn có thể include thêm các model khác liên quan đến Track nếu cần
             ]
@@ -94,7 +62,6 @@ const getTrackWithUploaderById = async (id) => {
     return await db.Track.findOne({
         where: {
             id,
-            status: 'approved' 
         },
         include: {
             model: db.User,
@@ -117,23 +84,18 @@ const getTracksByUploaderId = async (userId, currentUserId) => {
 
   const whereClause = {
     uploaderId: numericUserId,
-    status: 'approved',
     ...(isOwner ? {} : { privacy: 'public' }) // 👈 Nếu không phải chủ sở hữu thì chỉ thấy bài public
   };
 
   try {
     const tracks = await db.Track.findAll({
       where: whereClause,
-      attributes: ['id', 'trackUrl', 'imageUrl', 'uploaderId', 'privacy', 'createdAt', 'updatedAt'],
+      attributes: ['id', 'trackname', 'duration_ms','trackUrl', 'imageUrl', 'uploaderId', 'privacy', 'createdAt', 'updatedAt', 'lyrics'],
       include: [
         {
           model: db.User,
           attributes: ['id', 'Name']
         },
-        {
-          model: db.Metadata,
-          attributes: ['trackname', 'duration_ms', 'lyrics']
-        }
       ],
       order: [['createdAt', 'DESC']]
     });
@@ -152,55 +114,17 @@ const createTrack = async ({
   imageUrl,
   uploaderId,
   privacy,
-  absAudioPath,
+  lyrics = '',
   trackname
 }) => {
-  const metadata = await extractMetadata(absAudioPath);
-
-  metadata.trackname = trackname;
-  metadata.lyrics = '';
-
-  const approved = await checkMetadataSimilarity(metadata);
-  if (!approved){
-    throw new Error('Khong the them Track vi ly do ban quyen')
-  }
-
+  // Tạo bản ghi mới trong bảng Track
   const newTrack = await db.Track.create({
     trackUrl,
     imageUrl,
     uploaderId,
     privacy,
-    status: 'approved'
-  });
-
-  metadata.track_id = newTrack.id;
-  
-  const {
-    track_id, explicit, danceability, energy, key, loudness, mode,
-    speechiness, acousticness, instrumentalness, liveness,
-    valence, tempo, duration_ms, time_signature, year, release_date, lyrics
-  } = metadata;
-
-  await db.Metadata.create({
+    lyrics,
     trackname,
-    track_id,
-    explicit,
-    danceability,
-    energy,
-    key,
-    loudness,
-    mode,
-    speechiness,
-    acousticness,
-    instrumentalness,
-    liveness,
-    valence,
-    tempo,
-    duration_ms,
-    time_signature,
-    year,
-    release_date,
-    lyrics
   });
 
   return newTrack;
@@ -277,13 +201,8 @@ const updateTrackStatus = async (id, status) => {
 
 const getJoinedTracks = async () => {
   return await db.Track.findAll({
-    attributes: ['id', 'trackUrl', 'imageUrl', 'uploaderId', 'status', 'createdAt'],
+    attributes: ['id','trackname', 'trackUrl', 'imageUrl', 'uploaderId', 'createdAt'],
     include: [
-      {
-        model: db.Metadata,
-        attributes: ['trackname'],
-        required: false
-      },
       {
         model: db.User,
         attributes: [['name', 'UploaderName']],
@@ -308,16 +227,13 @@ const getJoinedTracks = async () => {
 const getTracksById = async (trackIds) => {
     return await db.Track.findAll({
         where: {
-            status: 'approved',
             privacy: 'public',
             id: {
                 [db.Sequelize.Op.in]: trackIds
             }
         },
         include: [
-            {
-                model: db.Metadata
-            },
+  
             {
                 model: db.User,
                 attributes: ['id', 'Name']
@@ -327,7 +243,6 @@ const getTracksById = async (trackIds) => {
 };
 
 export {
-    getTracksById,
     getAllTracks,
     getAllTracksForAdmin,
     getTrackById,
@@ -338,5 +253,6 @@ export {
     deleteTrack,
     getTracksByUserId,
     getJoinedTracks,
-    updateTrackStatus
+    updateTrackStatus,
+    getTracksById
 };

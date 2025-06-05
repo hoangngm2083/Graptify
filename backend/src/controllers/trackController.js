@@ -7,7 +7,6 @@ import { verityJWT } from '../middleware/JWTActions.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 import {
-    getTracksById,
     getAllTracks,
     getTrackById,
     getTrackWithUploaderById,
@@ -18,23 +17,22 @@ import {
     getAllTracksForAdmin,
     getTracksByUserId,
     getJoinedTracks,
-    updateTrackStatus
+    updateTrackStatus,
+    getTracksById
 } from '../services/track_service.js';
 
 
-
-
 const getAllTracksController = async (req, res) => {
-    try {
-        const tracks = await getAllTracks();
-        return res.status(200).json({
-            message: 'Get all tracks succeed!',
-            data: tracks
-        });
-    } catch (err) {
-        console.error('Database connection failed:', err);
-        res.status(500).send('Internal Server Error');
-    }
+  try {
+    const tracks = await getAllTracks();
+    return res.status(200).json({
+      message: 'Get all tracks succeed!',
+      data: tracks
+    });
+  } catch (err) {
+    console.error('Database connection failed:', err);
+    res.status(500).send('Internal Server Error');
+  }
 };
 
 const getTrackByIdController = async (req, res) => {
@@ -187,19 +185,15 @@ const uploadTrackCoverController = async (req, res) => {
 };
 const createTrackController = async (req, res) => {
   try {
-    // Xác thực người dùng
     const jwtData = verityJWT(req.cookies.jwt);
     const uploaderId = jwtData.userId;
 
-    // Lấy đường dẫn file
     const imageUrl = `assets/track_image/${req.files.image[0].filename}`;
     const trackUrl = `assets/track_audio/${req.files.audio[0].filename}`;
     const absAudioPath = path.resolve(`src/public/${trackUrl}`);
     const privacy = req.body.privacy || 'public';
     const trackname = req.body.title || 'Untitled';
 
-
-    // Gọi service
     const newTrack = await createTrack({
       trackUrl,
       imageUrl,
@@ -216,17 +210,15 @@ const createTrackController = async (req, res) => {
       track_id: newTrack.id
     });
   } catch (err) {
-    console.error('❌ Track creation failed:', err);
+    console.error('Track creation failed:', err);
     return res.status(500).json({ message: err.message || 'Internal Server Error' });
   }
 };
 
-
 const updateTrackController = async (req, res) => {
-  const id = req.params.id; // ID nằm trong URL
-  const { title, lyrics } = req.body;
-   const userId = req.userId;
- 
+  const id = req.params.id;
+  const { title, lyrics, privacy } = req.body;
+  const userId = req.userId;
 
   if (!id || !userId) {
     return res.status(400).json({ message: 'Thiếu ID hoặc chưa đăng nhập.' });
@@ -235,43 +227,27 @@ const updateTrackController = async (req, res) => {
   try {
     const updateData = {};
 
-    if (title) updateData.title = title;
+    if (title) updateData.trackname = title;  // 🔁 đổi từ 'title' sang 'trackname'
     if (lyrics !== undefined) updateData.lyrics = lyrics;
-    if (req.body.privacy) updateData.privacy = req.body.privacy;
+    if (privacy) updateData.privacy = privacy;
 
-    // ✅ Nhận file nếu có
     if (req.file) {
-     updateData.imageUrl = '/assets/track_image/' + req.file.filename;
+      updateData.imageUrl = '/assets/track_image/' + req.file.filename;
+      console.log("📥 Uploaded file:", req.file.filename);
     }
-    console.log("📥 Uploaded file:", req.file);
 
-    
-   
     const updatedTrack = await updateTrack(id, updateData, userId);
-    
-
-    if (title || lyrics !== undefined) {
-      const metadataUpdate = {};
-      if (title) metadataUpdate.trackname = title;
-      if (lyrics !== undefined) metadataUpdate.lyrics = lyrics;
-
-      await db.Metadata.update(
-        metadataUpdate,
-        { where: { track_id: id } }
-      );
-    }
-    
 
     return res.status(200).json({
-      message: 'Update track succeed!',
+      message: 'Cập nhật bài hát thành công!',
       data: updatedTrack
     });
+
   } catch (err) {
-    console.error('❌ Failed to update track:', err);
-    res.status(500).json({ message: err.message || 'Internal Server Error' });
+    console.error('❌ Lỗi khi cập nhật bài hát:', err);
+    res.status(500).json({ message: err.message || 'Lỗi máy chủ nội bộ' });
   }
 };
-
 
 const deleteTrackController = async (req, res) => { 
     const userId = req.userId;
@@ -405,12 +381,15 @@ const getTracksByUserController = async (req, res) => {
 
 const getTracksByIdController = async (req, res) => {
     try {
+      console.log("***************** req.body.track_ids", req.body.track_ids)
         const trackIds = req.body.track_ids;
-        
+        console.log("***************** trackIds", req.body.track_ids)
+        console.log("typeof trackIds:", typeof trackIds);
+        console.log("***************** !trackIds", !trackIds)
         if (!trackIds || !Array.isArray(trackIds)) {
             return res.status(400).json({ error: 'Invalid track IDs' });
         }
-
+        
         const tracks = await getTracksById(trackIds);
         return res.status(200).json(tracks);
     } catch (error) {
@@ -420,7 +399,6 @@ const getTracksByIdController = async (req, res) => {
 };
 
 export {
-    getTracksByIdController,
     getAllTracksController,
     getTrackByIdController,
     getTrackWithUploaderByIdController,
@@ -433,5 +411,6 @@ export {
     getJoinedTracksController,
     downloadTrackController,
     updateTrackStatusController,
-    getTracksByUserController
+    getTracksByUserController,
+    getTracksByIdController
 };

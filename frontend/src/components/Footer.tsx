@@ -173,9 +173,6 @@ const Footer: React.FC = () => {
     setVolume  
   }: UseFooterAudioPlayerReturn = useFooterAudioPlayer();
 
-  const { userId: profileUserId } = useParams<{ userId: string }>();
-  const viewedUserId = profileUserId ?? "me";
-
   // console.log("👈👈👈👈[Footer] render", {
   //   currentSong,
   //   isPlaying,

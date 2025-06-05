@@ -5,21 +5,21 @@ const axios = require('axios');
 module.exports = {
   name: 'deleteTrack-pipeline-policy',
   schema: {
-  "$id": "http://express-gateway.io/schemas/policies/deleteTrack-pipeline-policy.json",
-  "type": "object",
-  "properties": {
-    "recommenderService": {
-      "type": "string",
-      "format": "uri"
+    "$id": "http://express-gateway.io/schemas/policies/deleteTrack-pipeline-policy.json",
+    "type": "object",
+    "properties": {
+      "recommenderService": {
+        "type": "string",
+        "format": "uri"
+      },
+      "backendService": {
+        "type": "string",
+        "format": "uri"
+      }
     },
-    "backendService": {
-      "type": "string",
-      "format": "uri"
-    }
+    "required": ["recommenderService", "backendService"]
   },
-  "required": ["recommenderService", "backendService"]
-},
- policy:  (actionParams) => {
+  policy: (actionParams) => {
     return async (req, res, next) => {
       // 1. Lấy trackId từ URL (req.params.id)
       const trackId = req.params.id;
