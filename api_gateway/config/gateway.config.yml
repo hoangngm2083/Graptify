@@ -128,7 +128,7 @@ pipelines:
 
   image:
     apiEndpoints:
-      - track_image
+      - image
     policies:
       - proxy:
           - action:
